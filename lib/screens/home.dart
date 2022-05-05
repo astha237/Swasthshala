@@ -1,18 +1,34 @@
 import 'package:flutter/material.dart';
 import './login.dart';
 import './register.dart';
-import './healthdetails.dart';
+import "package:shared_preferences/shared_preferences.dart";
 
 class Home extends StatelessWidget {
   const Home({Key? key}) : super(key: key);
 
+  Future checkToken(BuildContext context) async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    try {
+      String? str = prefs.getString("token");
+      if (str == null) {
+        return;
+      }
+      if (str.isNotEmpty) {
+        Navigator.of(context).popAndPushNamed("main_app");
+      }
+    } catch (err) {
+      return;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    checkToken(context);
     return Scaffold(
-      backgroundColor: Color.fromARGB(255, 175, 211, 243),
+      backgroundColor: const Color.fromARGB(255, 175, 211, 243),
       appBar: AppBar(
-        title: Text('Welcome'),
-        backgroundColor: Color.fromARGB(255, 99, 172, 236),
+        title: const Text('Welcome'),
+        backgroundColor: const Color.fromARGB(255, 99, 172, 236),
       ),
       body: SizedBox(
         height: double.infinity,
@@ -31,9 +47,7 @@ class Home extends StatelessWidget {
                 fontWeight: FontWeight.w800,
               ),
             ),
-            SizedBox(
-              height: 60,
-            ),
+            const SizedBox(height: 60),
             ElevatedButton(
                 onPressed: () {
                   Navigator.push(
@@ -52,9 +66,10 @@ class Home extends StatelessWidget {
                 ),
                 style: ElevatedButton.styleFrom(
                   onPrimary: Colors.black87,
-                  primary: Color.fromARGB(255, 99, 172, 236),
-                  minimumSize: Size(88, 36),
-                  padding: EdgeInsets.symmetric(horizontal: 50, vertical: 8),
+                  primary: const Color.fromARGB(255, 99, 172, 236),
+                  minimumSize: const Size(88, 36),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 50, vertical: 8),
                   shape: const RoundedRectangleBorder(
                     borderRadius: BorderRadius.all(Radius.circular(4)),
                   ),
@@ -80,9 +95,10 @@ class Home extends StatelessWidget {
                 ),
                 style: ElevatedButton.styleFrom(
                   onPrimary: Colors.black87,
-                  primary: Color.fromARGB(255, 99, 172, 236),
-                  minimumSize: Size(88, 36),
-                  padding: EdgeInsets.symmetric(horizontal: 30, vertical: 8),
+                  primary: const Color.fromARGB(255, 99, 172, 236),
+                  minimumSize: const Size(88, 36),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 30, vertical: 8),
                   shape: const RoundedRectangleBorder(
                     borderRadius: BorderRadius.all(Radius.circular(4)),
                   ),

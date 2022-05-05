@@ -1,32 +1,34 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'dart:io';
 
-class SignIn extends StatefulWidget {
-  final String title;
+import 'package:shared_preferences/shared_preferences.dart';
 
-  // ignore: use_key_in_widget_constructors
-  const SignIn({
-    required this.title,
-  });
+import './camera.dart';
+import 'package:path/path.dart';
+import 'package:http_parser/http_parser.dart';
+
+class NewStudent extends StatefulWidget {
+  const NewStudent({Key? key}) : super(key: key);
 
   @override
   _LogInState createState() => _LogInState();
 }
 
-class _LogInState extends State<SignIn> {
+class _LogInState extends State<NewStudent> {
   final formKey = GlobalKey<FormState>();
-  String username = '';
-  String email = '';
+  String firstName = '';
+  String lastName = '';
+  File? photo;
+  String school = '';
   String city = '';
-  String password = '';
   int age = 0;
 
   @override
   Widget build(BuildContext context) => Scaffold(
         backgroundColor: const Color.fromARGB(255, 211, 220, 219),
         appBar: AppBar(
-          title: Text(widget.title),
           backgroundColor: Colors.teal,
         ),
         body: Form(
@@ -36,15 +38,17 @@ class _LogInState extends State<SignIn> {
             padding: const EdgeInsets.all(16),
             children: [
               const SizedBox(height: 16),
-              buildUsername(),
+              buildFirstName(),
+              const SizedBox(height: 32),
+              buildLastName(),
               const SizedBox(height: 16),
               buildAge(),
               const SizedBox(height: 16),
               buildCity(),
               const SizedBox(height: 16),
-              buildEmail(),
+              buildSchool(),
               const SizedBox(height: 32),
-              buildPassword(),
+              takePhoto(),
               const SizedBox(height: 32),
               buildSubmit(),
             ],
@@ -52,9 +56,9 @@ class _LogInState extends State<SignIn> {
         ),
       );
 
-  Widget buildUsername() => TextFormField(
+  Widget buildFirstName() => TextFormField(
         decoration: const InputDecoration(
-          labelText: 'Username',
+          labelText: 'First name',
           border: OutlineInputBorder(),
           // errorBorder:
           //     OutlineInputBorder(borderSide: BorderSide(color: Colors.purple)),
@@ -70,7 +74,28 @@ class _LogInState extends State<SignIn> {
           }
         },
         maxLength: 30,
-        onSaved: (value) => setState(() => username = value!),
+        onSaved: (value) => setState(() => firstName = value!),
+      );
+
+  Widget buildLastName() => TextFormField(
+        decoration: const InputDecoration(
+          labelText: 'last name',
+          border: OutlineInputBorder(),
+          // errorBorder:
+          //     OutlineInputBorder(borderSide: BorderSide(color: Colors.purple)),
+          // focusedErrorBorder:
+          //     OutlineInputBorder(borderSide: BorderSide(color: Colors.purple)),
+          // errorStyle: TextStyle(color: Colors.purple),
+        ),
+        validator: (value) {
+          if (value!.length < 4) {
+            return 'Enter at least 4 characters';
+          } else {
+            return null;
+          }
+        },
+        maxLength: 30,
+        onSaved: (value) => setState(() => lastName = value!),
       );
 
   Widget buildAge() => TextFormField(
@@ -109,42 +134,19 @@ class _LogInState extends State<SignIn> {
         onSaved: (value) => setState(() => city = value!),
       );
 
-  Widget buildEmail() => TextFormField(
+  Widget buildSchool() => TextFormField(
         decoration: const InputDecoration(
-          labelText: 'Email',
+          labelText: 'School',
           border: OutlineInputBorder(),
         ),
         validator: (value) {
-          const pattern = r'(^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$)';
-          final regExp = RegExp(pattern);
-
           if (value!.isEmpty) {
-            return 'Enter an email';
-          } else if (!regExp.hasMatch(value)) {
-            return 'Enter a valid email';
+            return 'Required.';
           } else {
             return null;
           }
         },
-        keyboardType: TextInputType.emailAddress,
-        onSaved: (value) => setState(() => email = value!),
-      );
-
-  Widget buildPassword() => TextFormField(
-        decoration: const InputDecoration(
-          labelText: 'Password',
-          border: OutlineInputBorder(),
-        ),
-        validator: (value) {
-          if (value!.length < 7) {
-            return 'Password must be at least 7 characters long';
-          } else {
-            return null;
-          }
-        },
-        onSaved: (value) => setState(() => password = value!),
-        keyboardType: TextInputType.visiblePassword,
-        obscureText: true,
+        onSaved: (value) => setState(() => school = value!),
       );
 
   Widget buildSubmit() => Builder(
@@ -158,7 +160,7 @@ class _LogInState extends State<SignIn> {
               if (kDebugMode) {
                 print("submit called");
               }
-              signUpUser();
+              signUpUser(context);
               // final message =
               //     'Username: $username\nPassword: $password\nEmail: $email';
               // final snackBar = SnackBar(
@@ -190,25 +192,53 @@ class _LogInState extends State<SignIn> {
           ),
         ),
       );
-  Future signUpUser() async {
+
+  Widget takePhoto() => Builder(
+        builder: (context) => ElevatedButton(
+          onPressed: chooseStudentImage,
+          child: const Text("take photo"),
+        ),
+      );
+
+  Future<void> chooseStudentImage() async {
+    File? f = await getFromCamera();
+    if (f == null) return;
+    photo = f;
+  }
+
+  Future signUpUser(context) async {
     var url =
-        Uri.parse("http://btp.southindia.cloudapp.azure.com/auth/register/");
-    var resp = await http.post(
-      url,
-      body: {
-        'username': username,
-        'password': password,
-        'email': email,
-        'first_name': username,
-        'last_name': username,
-      },
-    );
+        Uri.parse("http://btp.southindia.cloudapp.azure.com/auth/new_student/");
+    var prefs = await SharedPreferences.getInstance();
+    var token = prefs.getString("token");
+
+    Map<String, String> body = {
+      'first_name': firstName,
+      'last_name': lastName,
+      'school': school,
+      'city': city,
+      'age': age.toString(),
+    };
+    if (photo == null) return;
+
+    var request = http.MultipartRequest('POST', url);
+    Map<String, String> headers = {"authorization": "token $token"};
+    request.headers.addAll(headers);
+    request.files.add(http.MultipartFile(
+      'photo',
+      photo!.readAsBytes().asStream(),
+      photo!.lengthSync(),
+      filename: basename(photo!.path),
+      contentType: MediaType("image", extension(photo!.path)),
+    ));
+    request.fields.addAll(body);
+
+    var res = await request.send();
     if (kDebugMode) {
-      print(resp.statusCode);
-      print(resp.body);
+      print(res.statusCode);
+      var response = await http.Response.fromStream(res);
+      print(response.body);
     }
-    if (resp.statusCode == 201) {
-      Navigator.of(context).pop();
-    }
+    Navigator.of(context).pop();
   }
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'screens/home.dart';
+import 'screens/healthdetails.dart';
 //import 'package:textformfield_example/widget/button_widget.dart';
 
 Future main() async {
@@ -25,5 +26,8 @@ class MyApp extends StatelessWidget {
         theme: ThemeData(primaryColor: Colors.pink),
         home: const Home(),
         //home: const LogIn(title: title),
+        routes: {
+          "main_app": (context) => const HealthInfo(title: "swasthshala"),
+        },
       );
 }

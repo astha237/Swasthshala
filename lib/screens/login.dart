@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:flutter/foundation.dart';
+import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class LogIn extends StatefulWidget {
   final String title;
@@ -20,7 +24,7 @@ class _LogInState extends State<LogIn> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        backgroundColor: Color.fromARGB(255, 211, 220, 219),
+        backgroundColor: const Color.fromARGB(255, 211, 220, 219),
         appBar: AppBar(
           title: Text(widget.title),
           backgroundColor: Colors.teal,
@@ -33,8 +37,8 @@ class _LogInState extends State<LogIn> {
             children: [
               const SizedBox(height: 16),
               buildUsername(),
-              const SizedBox(height: 16),
-              buildEmail(),
+              // const SizedBox(height: 16),
+              // buildEmail(),
               const SizedBox(height: 32),
               buildPassword(),
               const SizedBox(height: 32),
@@ -111,17 +115,18 @@ class _LogInState extends State<LogIn> {
 
             if (isValid!) {
               formKey.currentState!.save();
+              signInUser();
 
-              final message =
-                  'Username: $username\nPassword: $password\nEmail: $email';
-              final snackBar = SnackBar(
-                content: Text(
-                  message,
-                  style: const TextStyle(fontSize: 20),
-                ),
-                backgroundColor: Colors.green,
-              );
-              ScaffoldMessenger.of(context).showSnackBar(snackBar);
+              // final message =
+              //     'Username: $username\nPassword: $password\nEmail: $email';
+              // final snackBar = SnackBar(
+              //   content: Text(
+              //     message,
+              //     style: const TextStyle(fontSize: 20),
+              //   ),
+              //   backgroundColor: Colors.green,
+              // );
+              // ScaffoldMessenger.of(context).showSnackBar(snackBar);
             }
           },
           child: const Text(
@@ -135,7 +140,7 @@ class _LogInState extends State<LogIn> {
           style: ElevatedButton.styleFrom(
             onPrimary: Colors.white,
             primary: Colors.teal,
-            minimumSize: Size(88, 36),
+            minimumSize: const Size(88, 36),
             padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 10),
             shape: const RoundedRectangleBorder(
               borderRadius: BorderRadius.all(Radius.circular(4)),
@@ -143,4 +148,24 @@ class _LogInState extends State<LogIn> {
           ),
         ),
       );
+  Future signInUser() async {
+    var url = Uri.parse("http://btp.southindia.cloudapp.azure.com/auth/login/");
+    var resp = await http.post(
+      url,
+      body: {
+        'username': username,
+        'password': password,
+      },
+    );
+    if (kDebugMode) {
+      print(resp.statusCode);
+      print(resp.body);
+    }
+    if (resp.statusCode == 200) {
+      Map data = jsonDecode(resp.body);
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      await prefs.setString("token", data["token"]);
+      Navigator.of(context).popAndPushNamed("main_app");
+    }
+  }
 }
